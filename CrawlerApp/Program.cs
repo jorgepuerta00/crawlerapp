@@ -16,7 +16,7 @@ namespace CrawlerApp
             Console.WriteLine($"botsay: v{versionString}");
             ShowBot("Welcome!");
 
-            if (args.Length < 3)
+            if (args.Length < 4)
             {
                 Console.WriteLine("-------------");
                 Console.WriteLine("\nUsage:");

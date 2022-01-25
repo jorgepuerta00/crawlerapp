@@ -2,7 +2,7 @@
   "profiles": {
     "CrawlerApp": {
       "commandName": "Project",
-      "commandLineArgs": "wcraw -r http://google.com"
+      "commandLineArgs": "wcraw -r http://evoluteal.com C:\\Users\\Emman\\Documents\\dest"
     }
   }
 }

@@ -1,10 +1,12 @@
 ﻿using RestSharp;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace CrawlerApp
 {
@@ -15,35 +17,48 @@ namespace CrawlerApp
         private readonly Uri _mainDomainUri;
         private readonly string _mode;
         private readonly string _startCommand;
+        private readonly string _destinationUrl;
 
         public Crawler(string[] args)
         {
             this._startCommand = args[0];
             this._mode = args[1];
             this._mainDomainUrl = args[2].NormalizeUrl();
+            this._destinationUrl = args[3];
             this._mainDomainUri = new Uri(this._mainDomainUrl);
             this._urlListCache = new HashSet<string>();
         }
 
         public async Task Execute()
         {
+            if (this.AreStartCommandsValid())
+                await this.ExecuteHttpRequest(this._mainDomainUrl);
+        }
+
+        private bool AreStartCommandsValid()
+        {
             if (!this._startCommand.Equals("wcraw"))
             {
                 Console.WriteLine("The command to start the program is not valid!");
-                return;
+                return false;
             }
             if (!this._mainDomainUrl.IsValidUrl())
             {
                 Console.WriteLine("The url is not valid!");
-                return;
+                return false;
             }
             if (!(this._mode.Equals("-r") || this._mode.Equals("-n")))
             {
                 Console.WriteLine("The entered mode is not valid");
-                return;
+                return false;
+            }
+            if (Directory.Exists(this._destinationUrl) is false)
+            {
+                Console.WriteLine("The entered destination url is not valid");
+                return false;
             }
 
-            await this.ExecuteHttpRequest(this._mainDomainUrl);
+            return true;
         }
 
         private async Task ExecuteHttpRequest(string url)
@@ -51,12 +66,13 @@ namespace CrawlerApp
             var client = new RestClient();
             var request = new RestRequest(url)
             {
-                Timeout = 6000,
+                Timeout = 10000,
                 Method = Method.Get
             };
             var cancellationTokenSource = new CancellationTokenSource();
             var response = await client.ExecuteAsync(request, cancellationTokenSource.Token);
             this.PrintResponse(response);
+            await this.SaveResponseInFileAsync(response);
             await this.ProcessResponse(response);
         }
 
@@ -122,6 +138,34 @@ namespace CrawlerApp
                 if (urlList.Contains(normalizedUrl) is false)
                     urlList.Add(normalizedUrl);
             }
+        }
+
+        private async Task SaveResponseInFileAsync(RestResponse response)
+        {
+            try
+            {
+                string fullFileName = this.GetFilePathDestination(response);
+                var buffer = Encoding.UTF8.GetBytes(string.IsNullOrEmpty(response.Content) ? "No content found in this url!!" : response.Content);
+
+                using var fs = new FileStream(fullFileName, FileMode.OpenOrCreate,
+                    FileAccess.Write, FileShare.None, buffer.Length, true);
+                await fs.WriteAsync(buffer, 0, buffer.Length);
+            }
+
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        private string GetFilePathDestination(RestResponse response)
+        {
+            var lastSegmentUrl = response.ResponseUri.Segments.LastOrDefault();
+
+            var fullFileName = this._destinationUrl + @"\\" +
+                           (response.ResponseUri.Host + "-" + lastSegmentUrl).Replace("/", "") +
+                           (lastSegmentUrl.Contains(".") ? lastSegmentUrl : @".html");
+            return fullFileName;
         }
     }
 }
