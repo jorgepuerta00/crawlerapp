@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CrawlerApp": {
+      "commandName": "Project",
+      "commandLineArgs": "wcraw -r http://google.com"
+    }
+  }
+}
